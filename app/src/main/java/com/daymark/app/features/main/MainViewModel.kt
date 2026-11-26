@@ -9,6 +9,7 @@ import com.daymark.app.domain.models.AppTheme
 import com.daymark.app.domain.models.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 enum class MainTab {
@@ -25,11 +26,8 @@ class MainViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.daymark.app.core.designsystem.ThemePresets.Daylight)
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.settingsFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.daymark.app.domain.models.AppSettings()).let { flow ->
-            kotlinx.coroutines.flow.flow {
-                settingsRepository.settingsFlow.collect { emit(it.themeMode) }
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
-        }
+        .map { it.themeMode }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
 
     class Factory(
         private val themeRepository: ThemeRepository,

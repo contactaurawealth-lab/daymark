@@ -76,6 +76,10 @@ fun SettingsBottomSheet(
     var showClearDataConfirm by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
 
+    androidx.activity.compose.BackHandler(enabled = true) {
+        onDismiss()
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,

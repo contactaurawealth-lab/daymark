@@ -18,8 +18,31 @@ class TimerViewModel(
     private val appContext: Context
 ) : ViewModel() {
 
+    private val tickerFlow = kotlinx.coroutines.flow.flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+
     val timerState: StateFlow<PersistedTimerState> = timerRepository.persistedState
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PersistedTimerState())
+
+    val remainingSeconds: StateFlow<Long> = kotlinx.coroutines.flow.combine(
+        timerState,
+        tickerFlow
+    ) { state, now ->
+        when (state.status) {
+            TimerStatus.RUNNING -> {
+                val target = state.targetEndTime ?: 0L
+                if (target > now) (target - now) / 1000 else 0L
+            }
+            TimerStatus.PAUSED -> {
+                (state.remainingMillisOnPause ?: 0L) / 1000
+            }
+            else -> state.totalDurationSeconds
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1500L)
 
     fun startTimer(task: Task?, durationMinutes: Int) {
         val durationSec = durationMinutes.toLong() * 60L

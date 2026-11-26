@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +43,9 @@ fun TaskEditDialog(
     onDismiss: () -> Unit
 ) {
     val colors = LocalDaymarkColors.current
-    var title by remember { mutableStateOf(task.title) }
-    var description by remember { mutableStateOf(task.description ?: "") }
-    var priority by remember { mutableStateOf(task.priority) }
+    var title by rememberSaveable { mutableStateOf(task.title) }
+    var description by rememberSaveable { mutableStateOf(task.description ?: "") }
+    var priority by rememberSaveable { mutableStateOf(task.priority) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -60,9 +61,16 @@ fun TaskEditDialog(
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                var isError by remember { mutableStateOf(false) }
+
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = {
+                        title = it
+                        if (it.isNotBlank()) isError = false
+                    },
+                    isError = isError,
+                    supportingText = if (isError) { { Text("Task title cannot be empty") } } else null,
                     label = { Text("Task Title") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

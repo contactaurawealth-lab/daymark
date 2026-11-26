@@ -14,21 +14,23 @@ object DailyProgressCalculator {
         todayCheckIns: List<GoalCheckIn>,
         todayEpochDay: Long = DateTimeUtils.todayEpochDay()
     ): DailyProgress {
-        val todayStartMillis = todayEpochDay * 86400000L
-        val todayEndMillis = todayStartMillis + 86400000L
+        val zone = java.time.ZoneId.systemDefault()
+        val todayDate = java.time.LocalDate.ofEpochDay(todayEpochDay)
+        val todayStartMillis = todayDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val todayEndMillis = todayDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 
         // Tasks completed today: either completedAt falls on today, or marked complete and due today
         val completedToday = tasks.filter { task ->
             task.completed && (
                 (task.completedAt != null && task.completedAt in todayStartMillis until todayEndMillis) ||
-                (task.dueDate != null && task.dueDate / 86400000L == todayEpochDay) ||
+                (task.dueDate != null && java.time.Instant.ofEpochMilli(task.dueDate).atZone(zone).toLocalDate().toEpochDay() == todayEpochDay) ||
                 (task.completedAt == null && task.dueDate == null) // Completed task without timestamps
             )
         }.size
 
         // Tasks relevant for today: pending tasks due on or before today, plus completed today
         val pendingDueToday = tasks.filter { task ->
-            !task.completed && (task.dueDate == null || task.dueDate / 86400000L <= todayEpochDay)
+            !task.completed && (task.dueDate == null || java.time.Instant.ofEpochMilli(task.dueDate).atZone(zone).toLocalDate().toEpochDay() <= todayEpochDay)
         }.size
 
         val totalTasksToday = completedToday + pendingDueToday

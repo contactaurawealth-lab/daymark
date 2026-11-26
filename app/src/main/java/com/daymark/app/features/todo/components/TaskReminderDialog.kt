@@ -40,12 +40,17 @@ fun TaskReminderDialog(
     onDismiss: () -> Unit
 ) {
     val colors = LocalDaymarkColors.current
+    val tomorrowNineAmMillis = remember {
+        val now = java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault())
+        var target = now.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0)
+        target.toInstant().toEpochMilli()
+    }
 
     val presetDelays = listOf(
         "15 minutes" to (15 * 60 * 1000L),
         "1 hour" to (60 * 60 * 1000L),
         "3 hours" to (3 * 60 * 60 * 1000L),
-        "Tomorrow morning (9 AM)" to (12 * 60 * 60 * 1000L)
+        "Tomorrow morning (9 AM)" to -1L
     )
 
     var selectedDelay by remember { mutableStateOf(presetDelays[0].second) }
@@ -96,7 +101,12 @@ fun TaskReminderDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onSetReminder(System.currentTimeMillis() + selectedDelay)
+                    val triggerAt = if (selectedDelay == -1L) {
+                        tomorrowNineAmMillis
+                    } else {
+                        System.currentTimeMillis() + selectedDelay
+                    }
+                    onSetReminder(triggerAt)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
             ) {
