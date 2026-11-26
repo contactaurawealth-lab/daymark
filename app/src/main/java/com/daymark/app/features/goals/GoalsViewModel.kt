@@ -7,16 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.daymark.app.core.utilities.DateTimeUtils
 import com.daymark.app.data.repositories.GoalRepository
 import com.daymark.app.domain.models.Goal
-import com.daymark.app.domain.models.GoalCheckIn
 import com.daymark.app.domain.models.GoalStatus
 import com.daymark.app.domain.models.StreakInfo
 import com.daymark.app.domain.models.TrackingType
+import com.daymark.app.domain.usecases.StreakCalculator
 import com.daymark.app.features.widgets.WidgetUpdateHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class GoalItemState(
@@ -24,6 +25,13 @@ data class GoalItemState(
     val streakInfo: StreakInfo,
     val todayCompleted: Boolean,
     val todayProgress: Double
+)
+
+private data class GoalsDialogState(
+    val selectedGoalId: Long? = null,
+    val showCreateDialog: Boolean = false,
+    val showLimitReachedDialog: Boolean = false,
+    val errorMessage: String? = null
 )
 
 data class GoalsUiState(
@@ -42,23 +50,22 @@ class GoalsViewModel(
     private val appContext: Context
 ) : ViewModel() {
 
-    private val _selectedGoalDetail = MutableStateFlow<GoalItemState?>(null)
-    private val _showCreateDialog = MutableStateFlow(false)
-    private val _showLimitReachedDialog = MutableStateFlow(false)
-    private val _errorMessage = MutableStateFlow<String?>(null)
+    private val _dialogState = MutableStateFlow(GoalsDialogState())
 
     val uiState: StateFlow<GoalsUiState> = combine(
         goalRepository.getAllGoals(),
-        _selectedGoalDetail,
-        _showCreateDialog,
-        _showLimitReachedDialog,
-        _errorMessage
-    ) { allGoals, selectedDetail, showCreate, showLimit, error ->
+        goalRepository.getAllCheckInsFlow(),
+        _dialogState
+    ) { allGoals, allCheckIns, dialog ->
+        val checkInsByGoal = allCheckIns.groupBy { it.goalId }
+        val todayEpochDay = DateTimeUtils.todayEpochDay()
+
         val activeList = mutableListOf<GoalItemState>()
         val archivedList = mutableListOf<GoalItemState>()
 
         for (goal in allGoals) {
-            val streak = goalRepository.calculateStreakInfo(goal)
+            val goalCheckIns = checkInsByGoal[goal.id].orEmpty()
+            val streak = StreakCalculator.calculate(goal, goalCheckIns, todayEpochDay)
             val item = GoalItemState(
                 goal = goal,
                 streakInfo = streak,
@@ -75,9 +82,8 @@ class GoalsViewModel(
         val activeCount = activeList.size
         val canAdd = activeCount < GoalRepository.MAX_ACTIVE_GOALS
 
-        // Refresh selected detail if open
-        val updatedDetail = selectedDetail?.let { current ->
-            (activeList + archivedList).find { it.goal.id == current.goal.id }
+        val updatedDetail = dialog.selectedGoalId?.let { selectedId ->
+            (activeList + archivedList).find { it.goal.id == selectedId }
         }
 
         GoalsUiState(
@@ -86,32 +92,32 @@ class GoalsViewModel(
             activeGoalsCount = activeCount,
             canAddGoal = canAdd,
             selectedGoalDetail = updatedDetail,
-            showCreateDialog = showCreate,
-            showLimitReachedDialog = showLimit,
-            errorMessage = error
+            showCreateDialog = dialog.showCreateDialog,
+            showLimitReachedDialog = dialog.showLimitReachedDialog,
+            errorMessage = dialog.errorMessage
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
 
     fun onRequestAddGoal() {
         viewModelScope.launch {
             if (goalRepository.canAddActiveGoal()) {
-                _showCreateDialog.value = true
+                _dialogState.update { it.copy(showCreateDialog = true) }
             } else {
-                _showLimitReachedDialog.value = true
+                _dialogState.update { it.copy(showLimitReachedDialog = true) }
             }
         }
     }
 
     fun dismissCreateDialog() {
-        _showCreateDialog.value = false
+        _dialogState.update { it.copy(showCreateDialog = false) }
     }
 
     fun dismissLimitDialog() {
-        _showLimitReachedDialog.value = false
+        _dialogState.update { it.copy(showLimitReachedDialog = false) }
     }
 
     fun clearError() {
-        _errorMessage.value = null
+        _dialogState.update { it.copy(errorMessage = null) }
     }
 
     fun createGoal(
@@ -140,10 +146,10 @@ class GoalsViewModel(
             )
             val result = goalRepository.insertGoal(goal)
             if (result.isSuccess) {
-                _showCreateDialog.value = false
-                WidgetUpdateHelper.updateAllWidgets(appContext)
+                _dialogState.update { it.copy(showCreateDialog = false) }
+                WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
             } else {
-                _errorMessage.value = result.exceptionOrNull()?.message
+                _dialogState.update { it.copy(errorMessage = result.exceptionOrNull()?.message) }
             }
         }
     }
@@ -151,14 +157,14 @@ class GoalsViewModel(
     fun toggleCheckboxGoal(goalId: Long) {
         viewModelScope.launch {
             goalRepository.toggleCheckboxGoal(goalId)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
     fun recordMeasurableProgress(goal: Goal, amount: Double) {
         viewModelScope.launch {
             goalRepository.recordMeasurableProgress(goal, amount)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
@@ -170,23 +176,23 @@ class GoalsViewModel(
                 recordedValue = directValue,
                 completed = isCompleted
             )
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
     fun openGoalDetail(item: GoalItemState) {
-        _selectedGoalDetail.value = item
+        _dialogState.update { it.copy(selectedGoalId = item.goal.id) }
     }
 
     fun closeGoalDetail() {
-        _selectedGoalDetail.value = null
+        _dialogState.update { it.copy(selectedGoalId = null) }
     }
 
     fun archiveGoal(goalId: Long) {
         viewModelScope.launch {
             goalRepository.archiveGoal(goalId)
             closeGoalDetail()
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
@@ -194,9 +200,9 @@ class GoalsViewModel(
         viewModelScope.launch {
             val res = goalRepository.resumeGoal(goalId)
             if (res.isFailure) {
-                _errorMessage.value = res.exceptionOrNull()?.message
+                _dialogState.update { it.copy(errorMessage = res.exceptionOrNull()?.message) }
             } else {
-                WidgetUpdateHelper.updateAllWidgets(appContext)
+                WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
             }
         }
     }
@@ -205,7 +211,7 @@ class GoalsViewModel(
         viewModelScope.launch {
             goalRepository.deleteGoal(goalId)
             closeGoalDetail()
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 

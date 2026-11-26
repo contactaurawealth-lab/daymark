@@ -3,6 +3,7 @@ package com.daymark.app.features.todo.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,26 +82,33 @@ fun TaskItemRow(
         // Accessible Checkbox
         Box(
             modifier = Modifier
-                .size(22.dp)
+                .size(32.dp)
                 .clip(CircleShape)
-                .background(checkboxBg)
-                .combinedClickable(onClick = onToggleCompletion),
+                .clickable(onClick = onToggleCompletion),
             contentAlignment = Alignment.Center
         ) {
-            if (task.completed) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(colors.primaryBackground)
-                )
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(checkboxBg),
+                contentAlignment = Alignment.Center
+            ) {
+                if (task.completed) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Completed",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(colors.primaryBackground)
+                    )
+                }
             }
         }
 

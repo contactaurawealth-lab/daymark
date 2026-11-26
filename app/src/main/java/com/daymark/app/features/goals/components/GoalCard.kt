@@ -115,39 +115,46 @@ fun GoalCard(
 
             // Completion Action (Checkbox or Measurable Quick Add)
             if (goal.trackingType == TrackingType.CHECKBOX) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(checkboxBg)
-                        .clickable(onClick = onToggleCheckbox),
-                    contentAlignment = Alignment.Center
+                IconButton(
+                    onClick = onToggleCheckbox,
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    if (isCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completed Today",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(colors.primaryBackground)
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(checkboxBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isCompleted) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Completed Today",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.primaryBackground)
+                            )
+                        }
                     }
                 }
             } else {
                 // Measurable Goal Quick Add (+1)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { onAddMeasurableValue(1.0) },
+                IconButton(
+                    onClick = { onAddMeasurableValue(1.0) },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
-                            .background(if (isCompleted) goalAccent else colors.primaryBackground)
+                            .background(if (isCompleted) goalAccent else colors.primaryBackground),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isCompleted) Icons.Default.Check else Icons.Default.Add,

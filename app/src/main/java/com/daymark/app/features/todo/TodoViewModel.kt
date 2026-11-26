@@ -110,7 +110,7 @@ class TodoViewModel(
     fun toggleTaskCompletion(taskId: Long) {
         viewModelScope.launch {
             taskRepository.toggleTaskCompletion(taskId)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
@@ -124,7 +124,7 @@ class TodoViewModel(
                 dueDate = dueDate
             )
             taskRepository.insertTask(task)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
@@ -132,7 +132,7 @@ class TodoViewModel(
         viewModelScope.launch {
             taskRepository.updateTask(task)
             _dialogState.update { it.copy(editingTask = null) }
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
@@ -140,14 +140,14 @@ class TodoViewModel(
         viewModelScope.launch {
             taskRepository.deleteTask(taskId)
             DaymarkAlarmReceiver.cancelTaskReminder(appContext, taskId)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 
     fun duplicateTask(taskId: Long) {
         viewModelScope.launch {
             taskRepository.duplicateTask(taskId)
-            WidgetUpdateHelper.updateAllWidgets(appContext)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }
 

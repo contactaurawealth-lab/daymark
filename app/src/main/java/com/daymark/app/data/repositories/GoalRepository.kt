@@ -88,6 +88,9 @@ class GoalRepository(
     fun getCheckInsForGoal(goalId: Long): Flow<List<GoalCheckIn>> =
         goalCheckInDao.getCheckInsForGoal(goalId).map { entities -> entities.map { it.toDomain() } }
 
+    fun getAllCheckInsFlow(): Flow<List<GoalCheckIn>> =
+        goalCheckInDao.getAllCheckIns().map { entities -> entities.map { it.toDomain() } }
+
     fun getTodayCheckInFlow(goalId: Long): Flow<GoalCheckIn?> =
         goalCheckInDao.getCheckInForGoalAndDateFlow(goalId, DateTimeUtils.todayEpochDay())
             .map { it?.toDomain() }
@@ -105,12 +108,14 @@ class GoalRepository(
         recordedValue: Double,
         completed: Boolean
     ): Long {
+        val existing = goalCheckInDao.getCheckInForGoalAndDate(goalId, date)
         val entity = GoalCheckInEntity(
+            id = existing?.id ?: 0,
             goalId = goalId,
             localDate = date,
             recordedValue = recordedValue,
             completed = completed,
-            createdAt = System.currentTimeMillis()
+            createdAt = existing?.createdAt ?: System.currentTimeMillis()
         )
         return goalCheckInDao.insertOrUpdateCheckIn(entity)
     }

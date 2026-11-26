@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +70,7 @@ fun MotivationSheet(
     val context = LocalContext.current
 
     val message = remember { DailyMotivationProvider.getTodayMessage() }
-    var isPlayingVideo by remember { mutableStateOf(false) }
+    var isPlayingVideo by rememberSaveable { mutableStateOf(false) }
 
     // Media picker launcher with persistable permission
     val videoPickerLauncher = rememberLauncherForActivityResult(
