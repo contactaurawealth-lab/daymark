@@ -2,6 +2,7 @@ package com.daymark.app.features.timer
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,19 +57,12 @@ fun TimerBottomSheet(
 ) {
     val colors = LocalDaymarkColors.current
     val timerState by viewModel.timerState.collectAsState()
+    val remainingSec by viewModel.remainingSeconds.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var ambientSoundOn by remember { mutableStateOf(AmbientSoundPlayer.isPlaying) }
 
-    val remainingSec = when (timerState.status) {
-        TimerStatus.RUNNING -> {
-            val target = timerState.targetEndTime ?: 0L
-            val now = System.currentTimeMillis()
-            if (target > now) (target - now) / 1000 else 0L
-        }
-        TimerStatus.PAUSED -> {
-            (timerState.remainingMillisOnPause ?: 0L) / 1000
-        }
-        else -> timerState.totalDurationSeconds
+    androidx.activity.compose.BackHandler(enabled = true) {
+        onDismiss()
     }
 
     val progressFraction = if (timerState.totalDurationSeconds > 0) {
@@ -117,7 +111,43 @@ fun TimerBottomSheet(
                 )
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            // Pomodoro Mode Quick Selector
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf(
+                    "Standard (25m)" to 25,
+                    "Short (15m)" to 15,
+                    "Deep (45m)" to 45,
+                    "Break (5m)" to 5
+                ).forEach { (label, duration) ->
+                    val isSel = timerState.totalDurationSeconds == (duration * 60L)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSel) colors.accent else colors.secondaryContainer.copy(alpha = 0.6f))
+                            .clickable {
+                                if (timerState.status == TimerStatus.IDLE || timerState.status == TimerStatus.COMPLETED) {
+                                    viewModel.startTimer(null, duration)
+                                }
+                            }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (isSel) Color.White else colors.textPrimary,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Circular Countdown Display
             Box(

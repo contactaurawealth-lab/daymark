@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.HourglassEmpty
@@ -40,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,11 +68,20 @@ fun TodoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val colors = LocalDaymarkColors.current
-    var newTaskTitle by remember { mutableStateOf("") }
+    var newTaskTitle by rememberSaveable { mutableStateOf("") }
 
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    androidx.compose.material3.Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
+        containerColor = colors.primaryBackground,
+        modifier = modifier.fillMaxSize()
+    ) { paddingValues ->
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
+            .padding(paddingValues)
             .background(colors.primaryBackground)
             .padding(horizontal = 20.dp)
     ) {
@@ -172,6 +183,13 @@ fun TodoScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Weekly Activity Insights Card
+        com.daymark.app.features.todo.components.WeeklyInsightsCard(
+            stats = uiState.weeklyStats
+        )
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -330,13 +348,26 @@ fun TodoScreen(
                 items(uiState.pendingTasks, key = { it.id }) { task ->
                     TaskItemRow(
                         task = task,
+                        modifier = Modifier.animateItem(),
                         onToggleCompletion = { viewModel.toggleTaskCompletion(task.id) },
                         onClick = { viewModel.openEditTask(task) },
                         onStartTimer = { viewModel.openTimerForTask(task) },
                         onEdit = { viewModel.openEditTask(task) },
                         onSetReminder = { viewModel.openReminderDialog(task) },
                         onDuplicate = { viewModel.duplicateTask(task.id) },
-                        onDelete = { viewModel.deleteTask(task.id) }
+                        onDelete = {
+                            viewModel.deleteTask(task.id)
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Deleted \"${task.title}\"",
+                                    actionLabel = "Undo",
+                                    duration = androidx.compose.material3.SnackbarDuration.Short
+                                )
+                                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                    viewModel.restoreTask(task)
+                                }
+                            }
+                        }
                     )
                 }
 
@@ -376,19 +407,33 @@ fun TodoScreen(
                         items(uiState.completedTasks, key = { it.id }) { task ->
                             TaskItemRow(
                                 task = task,
+                                modifier = Modifier.animateItem(),
                                 onToggleCompletion = { viewModel.toggleTaskCompletion(task.id) },
                                 onClick = { viewModel.openEditTask(task) },
                                 onStartTimer = { viewModel.openTimerForTask(task) },
                                 onEdit = { viewModel.openEditTask(task) },
                                 onSetReminder = { viewModel.openReminderDialog(task) },
                                 onDuplicate = { viewModel.duplicateTask(task.id) },
-                                onDelete = { viewModel.deleteTask(task.id) }
+                                onDelete = {
+                                    viewModel.deleteTask(task.id)
+                                    coroutineScope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "Deleted \"${task.title}\"",
+                                            actionLabel = "Undo",
+                                            duration = androidx.compose.material3.SnackbarDuration.Short
+                                        )
+                                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                            viewModel.restoreTask(task)
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
                 }
             }
         }
+    }
     }
 
     // Modal Sheets & Dialogs

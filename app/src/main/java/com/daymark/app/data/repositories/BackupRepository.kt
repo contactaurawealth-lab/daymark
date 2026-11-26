@@ -1,5 +1,6 @@
 package com.daymark.app.data.repositories
 
+import androidx.room.withTransaction
 import com.daymark.app.core.database.DaymarkDatabase
 import com.daymark.app.core.database.entities.CustomThemeEntity
 import com.daymark.app.core.database.entities.GoalCheckInEntity
@@ -132,8 +133,8 @@ class BackupRepository(
             }
 
             var importedCount = 0
-
-            // Import Tasks
+            database.withTransaction {
+                // Import Tasks
             if (root.has("tasks")) {
                 val tasksArray = root.getJSONArray("tasks")
                 for (i in 0 until tasksArray.length()) {
@@ -159,6 +160,79 @@ class BackupRepository(
                 }
             }
 
+            // Import Goals
+            if (root.has("goals")) {
+                val goalsArray = root.getJSONArray("goals")
+                for (i in 0 until goalsArray.length()) {
+                    val obj = goalsArray.getJSONObject(i)
+                    val goal = GoalEntity(
+                        id = 0,
+                        title = obj.getString("title"),
+                        description = obj.optString("description").takeIf { it.isNotEmpty() },
+                        icon = obj.optString("icon", "sparkles"),
+                        color = obj.optLong("color", 0xFF91A68A),
+                        trackingType = try {
+                            com.daymark.app.domain.models.TrackingType.valueOf(obj.optString("trackingType", "CHECKBOX"))
+                        } catch (e: Exception) {
+                            com.daymark.app.domain.models.TrackingType.CHECKBOX
+                        },
+                        targetValue = obj.optDouble("targetValue", 1.0),
+                        unit = obj.optString("unit", "times"),
+                        startDate = obj.optLong("startDate", com.daymark.app.core.utilities.DateTimeUtils.todayEpochDay()),
+                        durationDays = obj.optInt("durationDays", 30),
+                        reminderTime = obj.optString("reminderTime").takeIf { it.isNotEmpty() },
+                        status = try {
+                            com.daymark.app.domain.models.GoalStatus.valueOf(obj.optString("status", "ACTIVE"))
+                        } catch (e: Exception) {
+                            com.daymark.app.domain.models.GoalStatus.ACTIVE
+                        }
+                    )
+                    database.goalDao().insertGoal(goal)
+                    importedCount++
+                }
+            }
+
+            // Import Goal Check-Ins
+            if (root.has("goalCheckIns")) {
+                val checkInsArray = root.getJSONArray("goalCheckIns")
+                for (i in 0 until checkInsArray.length()) {
+                    val obj = checkInsArray.getJSONObject(i)
+                    val checkIn = GoalCheckInEntity(
+                        id = 0,
+                        goalId = obj.getLong("goalId"),
+                        localDate = obj.getLong("localDate"),
+                        recordedValue = obj.optDouble("recordedValue", 0.0),
+                        completed = obj.optBoolean("completed", false),
+                        createdAt = obj.optLong("createdAt", System.currentTimeMillis())
+                    )
+                    database.goalCheckInDao().insertOrUpdateCheckIn(checkIn)
+                    importedCount++
+                }
+            }
+
+            // Import Timer Sessions
+            if (root.has("timerSessions")) {
+                val sessionsArray = root.getJSONArray("timerSessions")
+                for (i in 0 until sessionsArray.length()) {
+                    val obj = sessionsArray.getJSONObject(i)
+                    val session = TimerSessionEntity(
+                        id = 0,
+                        taskId = obj.optLong("taskId", 0L),
+                        durationSeconds = obj.optLong("durationSeconds", 1500L),
+                        startedAt = obj.optLong("startedAt", System.currentTimeMillis()),
+                        elapsedSeconds = obj.optLong("elapsedSeconds", 0L),
+                        status = try {
+                            com.daymark.app.domain.models.TimerStatus.valueOf(obj.optString("status", "IDLE"))
+                        } catch (e: Exception) {
+                            com.daymark.app.domain.models.TimerStatus.IDLE
+                        },
+                        completedAt = obj.optLong("completedAt").takeIf { it > 0 }
+                    )
+                    database.timerDao().insertSession(session)
+                    importedCount++
+                }
+            }
+
             // Import Custom Themes
             if (root.has("customThemes")) {
                 val themesArray = root.getJSONArray("customThemes")
@@ -174,6 +248,36 @@ class BackupRepository(
                     )
                     database.customThemeDao().insertTheme(theme)
                     importedCount++
+                }
+            }
+            }
+
+            // Import Settings
+            if (root.has("settings")) {
+                val settingsObj = root.getJSONObject("settings")
+                if (settingsObj.has("themeMode")) {
+                    try {
+                        val mode = com.daymark.app.domain.models.ThemeMode.valueOf(settingsObj.getString("themeMode"))
+                        settingsRepository.setThemeMode(mode)
+                    } catch (e: Exception) {}
+                }
+                if (settingsObj.has("activeThemeId")) {
+                    settingsRepository.setActiveThemeId(settingsObj.getString("activeThemeId"))
+                }
+                if (settingsObj.has("defaultTimerMinutes")) {
+                    settingsRepository.setDefaultTimerMinutes(settingsObj.getInt("defaultTimerMinutes"))
+                }
+                if (settingsObj.has("notificationsEnabled")) {
+                    settingsRepository.setNotificationsEnabled(settingsObj.getBoolean("notificationsEnabled"))
+                }
+                if (settingsObj.has("taskRemindersEnabled")) {
+                    settingsRepository.setTaskRemindersEnabled(settingsObj.getBoolean("taskRemindersEnabled"))
+                }
+                if (settingsObj.has("goalRemindersEnabled")) {
+                    settingsRepository.setGoalRemindersEnabled(settingsObj.getBoolean("goalRemindersEnabled"))
+                }
+                if (settingsObj.has("quietHoursEnabled")) {
+                    settingsRepository.setQuietHoursEnabled(settingsObj.getBoolean("quietHoursEnabled"))
                 }
             }
 

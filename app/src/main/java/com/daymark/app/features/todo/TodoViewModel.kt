@@ -56,6 +56,7 @@ data class TodoUiState(
     val showMotivationSheet: Boolean = false,
     val showStandaloneTimerPicker: Boolean = false,
     val dailyProgress: DailyProgress = DailyProgress(),
+    val weeklyStats: com.daymark.app.domain.usecases.WeeklyProductivityStats = com.daymark.app.domain.usecases.WeeklyProductivityStats(),
     val dailyMotivation: MotivationalMessage = DailyMotivationProvider.getTodayMessage(),
     val appSettings: AppSettings = AppSettings()
 )
@@ -89,6 +90,7 @@ class TodoViewModel(
         otherFlow
     ) { (allTasks, pending, completed), (goals, checkIns, settings, dialog) ->
         val progress = DailyProgressCalculator.calculate(allTasks, goals, checkIns)
+        val weeklyStats = com.daymark.app.domain.usecases.WeeklyInsightsCalculator.calculate(allTasks)
         TodoUiState(
             pendingTasks = pending,
             completedTasks = completed,
@@ -102,6 +104,7 @@ class TodoViewModel(
             showMotivationSheet = dialog.showMotivationSheet,
             showStandaloneTimerPicker = dialog.showStandaloneTimerPicker,
             dailyProgress = progress,
+            weeklyStats = weeklyStats,
             dailyMotivation = DailyMotivationProvider.getTodayMessage(),
             appSettings = settings
         )
@@ -140,6 +143,13 @@ class TodoViewModel(
         viewModelScope.launch {
             taskRepository.deleteTask(taskId)
             DaymarkAlarmReceiver.cancelTaskReminder(appContext, taskId)
+            WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
+        }
+    }
+
+    fun restoreTask(task: Task) {
+        viewModelScope.launch {
+            taskRepository.insertTask(task)
             WidgetUpdateHelper.updateAllWidgetsAsync(appContext)
         }
     }

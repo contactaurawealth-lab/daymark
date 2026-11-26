@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,17 +60,17 @@ fun GoalCreateDialog(
 ) {
     val colors = LocalDaymarkColors.current
 
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var trackingType by remember { mutableStateOf(TrackingType.CHECKBOX) }
-    var targetValueText by remember { mutableStateOf("10") }
-    var unitText by remember { mutableStateOf("pages") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var trackingType by rememberSaveable { mutableStateOf(TrackingType.CHECKBOX) }
+    var targetValueText by rememberSaveable { mutableStateOf("10") }
+    var unitText by rememberSaveable { mutableStateOf("pages") }
 
     val durationPresets = listOf(7, 14, 21, 30, 60, 90)
-    var selectedDuration by remember { mutableStateOf(30) }
+    var selectedDuration by rememberSaveable { mutableStateOf(30) }
 
     val icons = listOf("sparkles", "book", "fitness", "water", "meditation", "code", "walk", "sleep")
-    var selectedIcon by remember { mutableStateOf("sparkles") }
+    var selectedIcon by rememberSaveable { mutableStateOf("sparkles") }
 
     val colorPalette = listOf(
         0xFF91A68A, // Sage
@@ -79,7 +80,7 @@ fun GoalCreateDialog(
         0xFF818CF8, // Lavender
         0xFFF59E0B  // Amber
     )
-    var selectedColor by remember { mutableStateOf(colorPalette[0]) }
+    var selectedColor by rememberSaveable { mutableStateOf(colorPalette[0]) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
