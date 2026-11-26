@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Daymark</string>
+    <string name="tagline">Your day, clearly marked.</string>
+    <string name="tab_todo">Todo</string>
+    <string name="tab_goals">Goals</string>
+    <string name="settings">Settings</string>
+
+    <!-- Widget Labels -->
+    <string name="widget_today_tasks_label">Daymark: Today\'s Tasks</string>
+    <string name="widget_goal_progress_label">Daymark: Goal Progress</string>
+    <string name="widget_active_timer_label">Daymark: Active Timer</string>
+    <string name="widget_daily_overview_label">Daymark: Daily Overview</string>
+</resources>

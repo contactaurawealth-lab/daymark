@@ -1,0 +1,6 @@
+<resources>
+    <color name="daymark_primary">#91A68A</color>
+    <color name="daymark_background">#F5F2EA</color>
+    <color name="daymark_surface">#EDE7DE</color>
+    <color name="daymark_text_primary">#2B303A</color>
+</resources>
